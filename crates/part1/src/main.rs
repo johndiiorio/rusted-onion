@@ -5,15 +5,13 @@ fn main() {
     let contents = read_to_string("part1.txt").unwrap();
     let text = decrypt(&contents).expect("Error decrypting ascii85 text");
 
-    let bytes: Vec<u8> = text
-        .bytes()
-        .map(|mut x| {
-            x = x ^ 0b01010101;
-            x = x.rotate_right(1);
-            return x;
+    let modified_bytes: Vec<u8> = text
+        .iter()
+        .map(|x| {
+            return (x ^ 0b01010101).rotate_right(1);
         })
         .collect();
 
-    let decrypted = String::from_utf8_lossy(bytes.as_slice());
+    let decrypted = String::from_utf8(modified_bytes).unwrap();
     println!("{}", decrypted);
 }

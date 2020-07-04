@@ -2,7 +2,7 @@ mod errors;
 
 pub use errors::Ascii85Error;
 
-pub fn decrypt(p: &str) -> Result<String, Ascii85Error> {
+pub fn decrypt(p: &str) -> Result<Vec<u8>, Ascii85Error> {
     if !p.starts_with("<~") {
         return Err(Ascii85Error::InvalidFormat {
             message: String::from("payload does not end with <~"),
@@ -53,15 +53,15 @@ pub fn decrypt(p: &str) -> Result<String, Ascii85Error> {
             binary.insert(0, '0');
         }
 
-        let decrypted_chunk = decrypt_binary_str(&binary, 8);
-        decrypted_chunks.push(decrypted_chunk);
+        let mut decrypted_chunk = decrypt_binary_str(&binary, 8);
+        decrypted_chunks.append(&mut decrypted_chunk);
         pos += len;
     }
 
-    return Ok(decrypted_chunks.join(""));
+    return Ok(decrypted_chunks);
 }
 
-fn decrypt_binary_str(string: &str, sub_len: usize) -> String {
+fn decrypt_binary_str(string: &str, sub_len: usize) -> Vec<u8> {
     let mut decrypted = Vec::with_capacity(string.len() / sub_len);
     let mut iter = string.chars();
     let mut pos = 0;
@@ -72,9 +72,8 @@ fn decrypt_binary_str(string: &str, sub_len: usize) -> String {
             len += ch.len_utf8();
         }
         let bits = &string[pos..pos + len];
-        let ascii_num = u8::from_str_radix(bits, 2).unwrap();
-        decrypted.push(ascii_num as char);
+        decrypted.push(u8::from_str_radix(bits, 2).unwrap());
         pos += len;
     }
-    return decrypted.into_iter().collect();
+    return decrypted;
 }
