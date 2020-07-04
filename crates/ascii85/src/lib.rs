@@ -20,7 +20,11 @@ pub fn decrypt(p: &str) -> Result<String, Ascii85Error> {
         .replace("~>", "");
 
     // Pad payload with 'u' chars to fill final block of 5
-    let num_u_to_add = 5 - (payload.len() % 5);
+    let mut num_u_to_add = 0;
+    let payload_remainder = payload.len() % 5;
+    if payload_remainder > 0 {
+        num_u_to_add = 5 - payload_remainder;
+    }
     for _ in 0..num_u_to_add {
         payload.push('u');
     }
