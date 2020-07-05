@@ -3,9 +3,9 @@ use std::fs::read_to_string;
 
 fn main() {
     let contents = read_to_string("part1.txt").unwrap();
-    let text = decrypt(&contents).expect("Error decrypting ascii85 text");
+    let bytes = decrypt(&contents).expect("Error decrypting ascii85 text");
 
-    let modified_bytes: Vec<u8> = text
+    let modified_bytes: Vec<u8> = bytes
         .iter()
         .map(|x| {
             return (x ^ 0b01010101).rotate_right(1);

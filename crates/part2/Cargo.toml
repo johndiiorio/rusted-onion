@@ -1,0 +1,8 @@
+[package]
+name = "part2"
+version = "0.1.0"
+authors = ["John DiIorio <johnzdiiorio@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+ascii85 = { path = "../ascii85" }
