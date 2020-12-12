@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 ascii85 = { path = "../ascii85" }
+thiserror = "1.0"

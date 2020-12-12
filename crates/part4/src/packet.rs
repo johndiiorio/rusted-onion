@@ -1,4 +1,5 @@
 use std::convert::TryInto;
+use thiserror::Error;
 
 pub struct Packet<'a> {
     ip_header: &'a [u8],
@@ -6,30 +7,52 @@ pub struct Packet<'a> {
     udp_data: &'a [u8],
 }
 
+const IP_ADDRESS_LENGTH: u16 = 20;
+
+#[derive(Error, Debug)]
+pub enum PacketError {
+    #[error("Eror creating packet: {message}")]
+    CreatePacket { message: String },
+}
+
 impl<'a> Packet<'a> {
-    pub fn new(start_index: usize, bytes: &'a Vec<u8>) -> Packet<'a> {
-        let ip_header_end_index = start_index + 20;
+    pub fn new(start_index: usize, bytes: &'a Vec<u8>) -> Result<Packet<'a>, PacketError> {
+        let ip_header_end_index = start_index + IP_ADDRESS_LENGTH as usize;
         let udp_header_end_index = ip_header_end_index + 8;
+
+        if ip_header_end_index > bytes.len() {
+            return Err(PacketError::CreatePacket {
+                message: String::from("Out of bounds with start_index"),
+            });
+        }
 
         let ip_header = &bytes[start_index..ip_header_end_index];
         let udp_header = &bytes[ip_header_end_index..udp_header_end_index];
-        let udp_data_length = udp_data_length_from_header(udp_header);
+        let udp_data_length = udp_total_length(udp_header) - 8;
         let udp_data =
             &bytes[udp_header_end_index..udp_header_end_index + udp_data_length as usize];
 
-        Packet {
+        Ok(Packet {
             ip_header,
             udp_header,
             udp_data,
-        }
+        })
     }
 
     pub fn is_valid(&self) -> bool {
         self.is_valid_ip_header() && self.is_valid_udp_header()
     }
 
+    pub fn get_packet_length(&self) -> u16 {
+        IP_ADDRESS_LENGTH + self.get_udp_total_length()
+    }
+
     pub fn get_data(&self) -> &[u8] {
         self.udp_data
+    }
+
+    fn get_udp_total_length(&self) -> u16 {
+        udp_total_length(self.udp_header)
     }
 
     fn get_source_address(&self) -> &[u8; 4] {
@@ -41,7 +64,7 @@ impl<'a> Packet<'a> {
     fn get_destination_address(&self) -> &[u8; 4] {
         self.ip_header[16..20]
             .try_into()
-            .expect("Source address has incorrect length")
+            .expect("Destination address has incorrect length")
     }
 
     fn get_protocol(&self) -> u8 {
@@ -56,14 +79,6 @@ impl<'a> Packet<'a> {
     fn get_destination_port(&self) -> u16 {
         let destination_port_bytes = &self.udp_header[2..4];
         u16::from_be_bytes([destination_port_bytes[0], destination_port_bytes[1]])
-    }
-
-    fn get_udp_data_length(&self) -> u16 {
-        udp_data_length_from_header(self.udp_header)
-    }
-
-    fn get_udp_total_length(&self) -> u16 {
-        8 + self.get_udp_data_length() + 8
     }
 
     fn get_udp_checksum(&self) -> u16 {
@@ -98,7 +113,7 @@ impl<'a> Packet<'a> {
     fn verify_udp_checksum(&self) -> bool {
         let source_address = self.get_source_address();
         let destination_adddress = self.get_destination_address();
-        let udp_data_length = self.get_udp_data_length();
+        let udp_total_length = self.get_udp_total_length();
 
         let mut psuedo_header: Vec<u16> = vec![
             u16::from_be_bytes([source_address[0], source_address[1]]),
@@ -106,17 +121,16 @@ impl<'a> Packet<'a> {
             u16::from_be_bytes([destination_adddress[0], destination_adddress[1]]),
             u16::from_be_bytes([destination_adddress[2], destination_adddress[3]]),
             self.get_protocol() as u16,
-            self.get_udp_total_length(),
+            udp_total_length,
             self.get_source_port(),
             self.get_destination_port(),
-            udp_data_length,
-            self.get_udp_checksum(),
+            udp_total_length,
         ];
         let mut udp_data = self.get_data().to_vec();
-        if udp_data_length % 2 != 0 {
+        if udp_data.len() % 2 != 0 {
             udp_data.push(0);
         }
-        for i in (0..udp_data_length).step_by(2) {
+        for i in (0..udp_data.len()).step_by(2) {
             let index = i as usize;
             let part = &udp_data[index..index + 2];
             let part_as_u16 = u16::from_be_bytes([part[0], part[1]]);
@@ -132,11 +146,11 @@ impl<'a> Packet<'a> {
                 sum += 1;
             }
         });
-        !sum == 0
+        !sum == self.get_udp_checksum()
     }
 }
 
-fn udp_data_length_from_header(udp_header: &[u8]) -> u16 {
+fn udp_total_length(udp_header: &[u8]) -> u16 {
     let data_length_bytes = &udp_header[4..6];
     u16::from_be_bytes([data_length_bytes[0], data_length_bytes[1]])
 }
@@ -148,7 +162,7 @@ fn ip_address_to_decimal(address: &[u8; 4]) -> String {
 
 fn verify_ip_checksum(header: &[u8]) -> bool {
     let mut sum: u16 = 0;
-    for i in (0..20).step_by(2) {
+    for i in (0..IP_ADDRESS_LENGTH as usize).step_by(2) {
         let part = &header[i..i + 2];
         let part_as_u16 = u16::from_be_bytes([part[0], part[1]]);
 

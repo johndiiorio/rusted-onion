@@ -40,6 +40,7 @@ name = "part4"
 version = "0.1.0"
 dependencies = [
  "ascii85",
+ "thiserror",
 ]
 
 [[package]]

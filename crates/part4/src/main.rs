@@ -9,8 +9,22 @@ fn main() {
     let contents = read_to_string("part4.txt").unwrap();
     let bytes = decrypt(&contents).expect("Error decrypting ascii85 text");
 
-    let packet = Packet::new(0, &bytes);
+    let mut data = Vec::new();
+    let mut index: usize = 0;
+    while index < bytes.len() {
+        let packet = match Packet::new(index, &bytes) {
+            Ok(p) => p,
+            Err(_) => {
+                break;
+            }
+        };
+        if packet.is_valid() {
+            let mut packet_data = packet.get_data().to_vec();
+            data.append(&mut packet_data);
+        }
+        index += packet.get_packet_length() as usize;
+    }
 
-    println!("{}", packet.is_valid());
-    let _packet_data = packet.get_data();
+    let decrypted = String::from_utf8(data).unwrap();
+    println!("{}", decrypted);
 }
