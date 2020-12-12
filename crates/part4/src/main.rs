@@ -6,7 +6,7 @@ mod packet;
 use crate::packet::Packet;
 
 fn main() {
-    let contents = read_to_string("part4.txt").unwrap();
+    let contents = read_to_string("payloads/part4.txt").unwrap();
     let bytes = decrypt(&contents).expect("Error decrypting ascii85 text");
 
     let mut data = Vec::new();

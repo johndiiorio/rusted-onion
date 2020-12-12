@@ -2,7 +2,7 @@ use ascii85::decrypt;
 use std::fs::read_to_string;
 
 fn main() {
-    let contents = read_to_string("part3.txt").unwrap();
+    let contents = read_to_string("payloads/part3.txt").unwrap();
     let bytes = decrypt(&contents).expect("Error decrypting ascii85 text");
     let mut key: Vec<u8> = vec![0; 32];
 
